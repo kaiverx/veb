@@ -4,17 +4,15 @@ from rest_framework import status
 from django.contrib.auth.models import User
 from .models import Game, Developer, Purchase, Review
 
-# Тесты для GameViewSet
 class GameViewSetTests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        # Создаём разработчика
+
         self.developer = Developer.objects.create(
             developer_name='Dev Studio',
             country='USA',
             foundation_date='2000-01-01'
         )
-        # Данные для создания игры через API
         self.game_data = {
             'game_name': 'Test Game',
             'price': 50.0,
@@ -54,7 +52,6 @@ class GameViewSetTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
 
-# Тесты для PurchaseViewSet
 class PurchaseViewSetTests(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -86,7 +83,6 @@ class PurchaseViewSetTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
 
-# Тесты для ReviewViewSet
 class ReviewViewSetTests(TestCase):
     def setUp(self):
         self.client = APIClient()
