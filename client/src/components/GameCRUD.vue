@@ -1,184 +1,201 @@
 <template>
-  <div>
-    <h2>Games</h2>
+  <div class="container">
+    <h1>Игры</h1>
 
-    <!-- CREATE -->
-    <div class="card p-3 mb-4">
-      <h4>Create Game</h4>
-      <input v-model="newGame.game_name" placeholder="Title" class="form-control mb-2" />
-      <input v-model="newGame.price" type="number" placeholder="Price" class="form-control mb-2" />
-      <input v-model="newGame.score" type="number" placeholder="Score (0-10)" step="0.1" max="10" class="form-control mb-2" />
-      <input v-model="newGame.info" placeholder="Info" class="form-control mb-2" />
-
-      <select v-model="newGame.status" class="form-control mb-2">
-        <option disabled value="">Select status</option>
-        <option value="beta">Beta</option>
-        <option value="released">Released</option>
-        <option value="early access">Early Access</option>
-        <option value="coming soon">Coming Soon</option>
-      </select>
-
-      <select v-model="newGame.developer_id" class="form-control mb-2">
-        <option disabled value="">Select Developer</option>
-        <option v-for="dev in developers" :key="dev.id" :value="dev.id">
-          {{ dev.developer_name }}
-        </option>
-      </select>
-
-      <h5>System Requirements</h5>
-      <input v-model="newGame.system_requirements.cpu" placeholder="CPU" class="form-control mb-2" />
-      <input v-model="newGame.system_requirements.gpu" placeholder="GPU" class="form-control mb-2" />
-      <input v-model="newGame.system_requirements.memory" placeholder="Memory" class="form-control mb-2" />
-      <input v-model="newGame.system_requirements.storage" placeholder="Storage" class="form-control mb-2" />
-      <input v-model="newGame.system_requirements.os" placeholder="Operating System" class="form-control mb-2" />
-
-      <button @click="createGame" class="btn btn-success">Create</button>
-    </div>
-
-    <!-- LIST -->
-    <table class="table table-bordered">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Title</th>
-          <th>Price</th>
-          <th>Score</th>
-          <th>Info</th>
-          <th>Status</th>
-          <th>Developer</th>
-          <th>System Requirements</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        <tr v-for="game in games" :key="game.id">
-          <td>{{ game.id }}</td>
-          <td><input v-model="game.game_name" class="form-control" /></td>
-          <td><input v-model="game.price" type="number" class="form-control" /></td>
-          <td><input v-model="game.score" type="number" step="0.1" max="10" class="form-control" /></td>
-          <td><input v-model="game.info" class="form-control" /></td>
-
-          <td>
-            <select v-model="game.status" class="form-control">
+    <form @submit.prevent.stop="onGameAdd">
+      <div class="row">
+        <div class="col">
+          <div class="form-floating">
+            <input type="text" class="form-control" v-model="gameToAdd.game_name" required />
+            <label>Название</label>
+          </div>
+        </div>
+        <div class="col">
+          <div class="form-floating">
+            <input type="number" class="form-control" v-model="gameToAdd.price" required />
+            <label>Цена</label>
+          </div>
+        </div>
+        <div class="col">
+          <div class="form-floating">
+            <input type="number" class="form-control" v-model="gameToAdd.score" step="0.1" />
+            <label>Оценка</label>
+          </div>
+        </div>
+        <div class="col">
+          <div class="form-floating">
+            <input type="text" class="form-control" v-model="gameToAdd.info" required />
+            <label>Описание</label>
+          </div>
+        </div>
+        <div class="col">
+          <div class="form-floating">
+            <select class="form-select" v-model="gameToAdd.status" required>
               <option value="beta">Beta</option>
               <option value="released">Released</option>
               <option value="early access">Early Access</option>
               <option value="coming soon">Coming Soon</option>
             </select>
-          </td>
-
-          <td>
-            <select v-model="game.developer_id" class="form-control">
-              <option v-for="dev in developers" :key="dev.id" :value="dev.id">
-                {{ dev.developer_name }}
-              </option>
+            <label>Статус</label>
+          </div>
+        </div>
+        <div class="col">
+          <div class="form-floating">
+            <input type="text" class="form-control" v-model="gameToAdd.system_requirements" required />
+            <label>Системные требования</label>
+          </div>
+        </div>
+        <div class="col">
+          <div class="form-floating">
+            <select class="form-select" v-model="gameToAdd.developer_id" required>
+              <option :value="d.id" v-for="d in developers">{{ d.developer_name }}</option>
             </select>
-          </td>
+            <label>Разработчик</label>
+          </div>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-primary">Добавить</button>
+        </div>
+      </div>
+    </form>
 
-          <td>
-            <input v-model="game.system_requirements.cpu" placeholder="CPU" class="form-control mb-1" />
-            <input v-model="game.system_requirements.gpu" placeholder="GPU" class="form-control mb-1" />
-            <input v-model="game.system_requirements.memory" placeholder="Memory" class="form-control mb-1" />
-            <input v-model="game.system_requirements.storage" placeholder="Storage" class="form-control mb-1" />
-            <input v-model="game.system_requirements.os" placeholder="OS" class="form-control mb-1" />
-          </td>
+    <div v-for="item in games" class="d-flex gap-2 align-items-center mt-2">
+      <div>{{ item.game_name }}</div>
+      <div>{{ item.price }}</div>
+      <div>{{ item.score }}</div>
+      <div>{{ item.info }}</div>
+      <div>{{ item.status }}</div>
+      <div>{{ item.system_requirements }}</div>
+      <div>{{ item.developer?.developer_name }}</div>
+      <button
+        class="btn btn-success"
+        @click="onGameEditClick(item)"
+        data-bs-toggle="modal"
+        data-bs-target="#editGameModal"
+      >
+        <i class="bi bi-pen-fill"></i>
+      </button>
+      <button class="btn btn-danger" @click="onRemoveClick(item)">
+        <i class="bi bi-x"></i>
+      </button>
+    </div>
 
-          <td>
-            <button @click="updateGame(game)" class="btn btn-primary me-2">Update</button>
-            <button @click="deleteGame(game.id)" class="btn btn-danger">Delete</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="modal fade" id="editGameModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h1 class="modal-title fs-5">редактировать</h1>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col">
+                <div class="form-floating">
+                  <input type="text" class="form-control" v-model="gameToEdit.game_name" />
+                  <label>Название</label>
+                </div>
+              </div>
+              <div class="col">
+                <div class="form-floating">
+                  <input type="number" class="form-control" v-model="gameToEdit.price" />
+                  <label>Цена</label>
+                </div>
+              </div>
+              <div class="col">
+                <div class="form-floating">
+                  <input type="number" class="form-control" v-model="gameToEdit.score" step="0.1" />
+                  <label>Оценка</label>
+                </div>
+              </div>
+              <div class="col">
+                <div class="form-floating">
+                  <input type="text" class="form-control" v-model="gameToEdit.info" />
+                  <label>Описание</label>
+                </div>
+              </div>
+              <div class="col">
+                <div class="form-floating">
+                  <select class="form-select" v-model="gameToEdit.status">
+                    <option value="beta">Beta</option>
+                    <option value="released">Released</option>
+                    <option value="early access">Early Access</option>
+                    <option value="coming soon">Coming Soon</option>
+                  </select>
+                  <label>Статус</label>
+                </div>
+              </div>
+              <div class="col">
+                <div class="form-floating">
+                  <input type="text" class="form-control" v-model="gameToEdit.system_requirements" />
+                  <label>Системные требования</label>
+                </div>
+              </div>
+              <div class="col">
+                <div class="form-floating">
+                  <select class="form-select" v-model="gameToEdit.developer_id">
+                    <option :value="d.id" v-for="d in developers">{{ d.developer_name }}</option>
+                  </select>
+                  <label>Разработчик</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button data-bs-dismiss="modal" type="button" class="btn btn-primary" @click="onUpdateGame">Сохранить</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
-<script>
-import axios from "axios";
+<script setup>
+import { ref, onBeforeMount } from 'vue'
+import axios from 'axios'
+import Cookies from 'js-cookie'
 
-export default {
-  data() {
-    return {
-      games: [],
-      developers: [],
-      newGame: {
-        game_name: "",
-        price: 0,
-        score: 0,
-        info: "",
-        status: "",
-        developer_id: null,
-        system_requirements: {
-          cpu: "",
-          gpu: "",
-          memory: "",
-          storage: "",
-          os: "",
-        },
-      },
-    };
-  },
+onBeforeMount(() => {
+  axios.defaults.headers.common['X-CSRFToken'] = Cookies.get("csrftoken")
+  fetchGames()
+  fetchDevelopers()
+})
 
-  mounted() {
-    this.loadGames();
-    this.loadDevelopers();
-  },
+const games = ref([])
+const developers = ref([])
+const gameToAdd = ref({})
+const gameToEdit = ref({})
 
-  methods: {
-    async loadGames() {
-      const response = await axios.get("http://127.0.0.1:8000/api/games/");
-      this.games = response.data;
-    },
+async function fetchGames() {
+  const response = await axios.get("/api/games/")
+  games.value = response.data
+}
 
-    async loadDevelopers() {
-      const response = await axios.get("http://127.0.0.1:8000/api/developers/");
-      this.developers = response.data;
-    },
+async function fetchDevelopers() {
+  const response = await axios.get("/api/developers/")
+  developers.value = response.data
+}
 
-    async createGame() {
-      const payload = { ...this.newGame };
-      await axios.post("http://127.0.0.1:8000/api/games/", payload);
-      this.loadGames();
-      this.resetNewGame();
-    },
+async function onGameAdd() {
+  await axios.post("/api/games/", {
+    ...gameToAdd.value,
+  })
+  await fetchGames()
+}
 
-    async updateGame(game) {
-      const payload = {
-        game_name: game.game_name,
-        price: game.price,
-        score: game.score,
-        info: game.info,
-        status: game.status,
-        developer_id: game.developer_id,
-        system_requirements: game.system_requirements,
-      };
-      await axios.put(`http://127.0.0.1:8000/api/games/${game.id}/`, payload);
-      this.loadGames();
-    },
+async function onRemoveClick(game) {
+  await axios.delete(`/api/games/${game.id}/`)
+  await fetchGames()
+}
 
-    async deleteGame(id) {
-      await axios.delete(`http://127.0.0.1:8000/api/games/${id}/`);
-      this.loadGames();
-    },
+async function onGameEditClick(game) {
+  gameToEdit.value = { ...game, developer_id: game.developer?.id }
+}
 
-    resetNewGame() {
-      this.newGame = {
-        game_name: "",
-        price: 0,
-        score: 0,
-        info: "",
-        status: "",
-        developer_id: null,
-        system_requirements: {
-          cpu: "",
-          gpu: "",
-          memory: "",
-          storage: "",
-          os: "",
-        },
-      };
-    },
-  },
-};
+async function onUpdateGame() {
+  await axios.put(`/api/games/${gameToEdit.value.id}/`, {
+    ...gameToEdit.value,
+  })
+  await fetchGames()
+}
 </script>
