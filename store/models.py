@@ -5,18 +5,27 @@ class Developer(models.Model):
     developer_name = models.CharField(max_length=100)
     country = models.CharField(max_length=50)
     foundation_date = models.DateField()
+    picture = models.ImageField("Изображение", null=True, upload_to="developers")
 
     def __str__(self):
         return self.developer_name
 
 class Game(models.Model):
+    STATUS_CHOICES = [
+        ('beta', 'Beta'),
+        ('released', 'Released'),
+        ('early access', 'Early Access'),
+        ('coming soon', 'Coming Soon'),
+    ]
+
     game_name = models.CharField(max_length=100)
     price = models.DecimalField(max_digits=7, decimal_places=2)
     score = models.FloatField(default=0)
     info = models.TextField()
-    status = models.CharField(max_length=50)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='coming soon')
     system_requirements = models.TextField()
     developer = models.ForeignKey(Developer, on_delete=models.CASCADE)
+    picture = models.ImageField("Изображение", null=True, upload_to="games")
 
     def __str__(self):
         return self.game_name
@@ -27,7 +36,7 @@ class UserProfile(models.Model):
     avatar = models.URLField(blank=True)
 
     def __str__(self):
-        return self.username
+        return self.user.username
 
 class Purchase(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

@@ -54,6 +54,12 @@
           </div>
         </div>
         <div class="col-auto">
+          <input class="form-control" type="file" ref="gamePictureRef" @change="gameAddPictureChange" />
+        </div>
+        <div class="col-auto">
+          <img :src="gameAddImageUrl" style="max-height: 60px;" alt="" />
+        </div>
+        <div class="col-auto">
           <button class="btn btn-primary">Добавить</button>
         </div>
       </div>
@@ -67,6 +73,13 @@
       <div>{{ item.status }}</div>
       <div>{{ item.system_requirements }}</div>
       <div>{{ item.developer?.developer_name }}</div>
+      <div v-show="item.picture">
+        <img :src="item.picture" style="max-height: 60px;"
+          @click="onPictureClick(item.picture)"
+          data-bs-toggle="modal"
+          data-bs-target="#pictureModal"
+        />
+      </div>
       <button
         class="btn btn-success"
         @click="onGameEditClick(item)"
@@ -138,11 +151,25 @@
                   <label>Разработчик</label>
                 </div>
               </div>
+              <div class="col-auto">
+                <input class="form-control" type="file" ref="gameEditPictureRef" />
+              </div>
             </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             <button data-bs-dismiss="modal" type="button" class="btn btn-primary" @click="onUpdateGame">Сохранить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Модальное окно с картинкой -->
+    <div class="modal fade" id="pictureModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-body">
+            <img :src="selectedPicture" style="width: 100%;" alt="" />
           </div>
         </div>
       </div>
@@ -153,10 +180,8 @@
 <script setup>
 import { ref, onBeforeMount } from 'vue'
 import axios from 'axios'
-import Cookies from 'js-cookie'
 
 onBeforeMount(() => {
-  axios.defaults.headers.common['X-CSRFToken'] = Cookies.get("csrftoken")
   fetchGames()
   fetchDevelopers()
 })
@@ -165,6 +190,10 @@ const games = ref([])
 const developers = ref([])
 const gameToAdd = ref({})
 const gameToEdit = ref({})
+const gamePictureRef = ref()
+const gameEditPictureRef = ref()
+const gameAddImageUrl = ref()
+const selectedPicture = ref()
 
 async function fetchGames() {
   const response = await axios.get("/api/games/")
@@ -176,9 +205,24 @@ async function fetchDevelopers() {
   developers.value = response.data
 }
 
+function gameAddPictureChange() {
+  gameAddImageUrl.value = URL.createObjectURL(gamePictureRef.value.files[0])
+}
+
 async function onGameAdd() {
-  await axios.post("/api/games/", {
-    ...gameToAdd.value,
+  const formData = new FormData()
+  if (gamePictureRef.value.files[0]) {
+    formData.append('picture', gamePictureRef.value.files[0])
+  }
+  formData.set('game_name', gameToAdd.value.game_name)
+  formData.set('price', gameToAdd.value.price)
+  formData.set('score', gameToAdd.value.score || 0)
+  formData.set('info', gameToAdd.value.info)
+  formData.set('status', gameToAdd.value.status)
+  formData.set('system_requirements', gameToAdd.value.system_requirements)
+  formData.set('developer_id', gameToAdd.value.developer_id)
+  await axios.post("/api/games/", formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
   })
   await fetchGames()
 }
@@ -193,9 +237,24 @@ async function onGameEditClick(game) {
 }
 
 async function onUpdateGame() {
-  await axios.put(`/api/games/${gameToEdit.value.id}/`, {
-    ...gameToEdit.value,
+  const formData = new FormData()
+  if (gameEditPictureRef.value.files[0]) {
+    formData.append('picture', gameEditPictureRef.value.files[0])
+  }
+  formData.set('game_name', gameToEdit.value.game_name)
+  formData.set('price', gameToEdit.value.price)
+  formData.set('score', gameToEdit.value.score || 0)
+  formData.set('info', gameToEdit.value.info)
+  formData.set('status', gameToEdit.value.status)
+  formData.set('system_requirements', gameToEdit.value.system_requirements)
+  formData.set('developer_id', gameToEdit.value.developer_id)
+  await axios.put(`/api/games/${gameToEdit.value.id}/`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
   })
   await fetchGames()
+}
+
+function onPictureClick(picture) {
+  selectedPicture.value = picture
 }
 </script>

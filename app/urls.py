@@ -1,9 +1,9 @@
+from django.conf import settings
 from django.contrib import admin
 from django.urls import path, include
-from django.views.generic import RedirectView  # для редиректа
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('store.urls')),  # маршруты API
-    path('', RedirectView.as_view(url='/api/', permanent=False)),  # редирект с корня
-]
+    path('api/', include('store.urls')),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

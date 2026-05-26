@@ -23,6 +23,12 @@
           </div>
         </div>
         <div class="col-auto">
+          <input class="form-control" type="file" ref="developerPictureRef" @change="developerAddPictureChange" />
+        </div>
+        <div class="col-auto">
+          <img :src="developerAddImageUrl" style="max-height: 60px;" alt="" />
+        </div>
+        <div class="col-auto">
           <button class="btn btn-primary">Добавить</button>
         </div>
       </div>
@@ -32,6 +38,7 @@
       <div>{{ item.developer_name }}</div>
       <div>{{ item.country }}</div>
       <div>{{ item.foundation_date }}</div>
+      <div v-show="item.picture"><img :src="item.picture" style="max-height: 60px;" /></div>
       <button
         class="btn btn-success"
         @click="onDeveloperEditClick(item)"
@@ -72,11 +79,25 @@
                   <label>Дата основания</label>
                 </div>
               </div>
+              <div class="col-auto">
+                <input class="form-control" type="file" ref="developerEditPictureRef" />
+              </div>
             </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             <button data-bs-dismiss="modal" type="button" class="btn btn-primary" @click="onUpdateDeveloper">Сохранить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Модальное окно с картинкой -->
+    <div class="modal fade" id="pictureModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-body">
+            <img :src="selectedPicture" style="width: 100%;" alt="" />
           </div>
         </div>
       </div>
@@ -87,25 +108,38 @@
 <script setup>
 import { ref, onBeforeMount } from 'vue'
 import axios from 'axios'
-import Cookies from 'js-cookie'
 
 onBeforeMount(() => {
-  axios.defaults.headers.common['X-CSRFToken'] = Cookies.get("csrftoken")
   fetchDevelopers()
 })
 
 const developers = ref([])
 const developerToAdd = ref({})
 const developerToEdit = ref({})
+const developerPictureRef = ref()
+const developerEditPictureRef = ref()
+const developerAddImageUrl = ref()
+const selectedPicture = ref()
 
 async function fetchDevelopers() {
   const response = await axios.get("/api/developers/")
   developers.value = response.data
 }
 
+function developerAddPictureChange() {
+  developerAddImageUrl.value = URL.createObjectURL(developerPictureRef.value.files[0])
+}
+
 async function onDeveloperAdd() {
-  await axios.post("/api/developers/", {
-    ...developerToAdd.value,
+  const formData = new FormData()
+  if (developerPictureRef.value.files[0]) {
+    formData.append('picture', developerPictureRef.value.files[0])
+  }
+  formData.set('developer_name', developerToAdd.value.developer_name)
+  formData.set('country', developerToAdd.value.country)
+  formData.set('foundation_date', developerToAdd.value.foundation_date)
+  await axios.post("/api/developers/", formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
   })
   await fetchDevelopers()
 }
@@ -120,9 +154,20 @@ async function onDeveloperEditClick(developer) {
 }
 
 async function onUpdateDeveloper() {
-  await axios.put(`/api/developers/${developerToEdit.value.id}/`, {
-    ...developerToEdit.value,
+  const formData = new FormData()
+  if (developerEditPictureRef.value.files[0]) {
+    formData.append('picture', developerEditPictureRef.value.files[0])
+  }
+  formData.set('developer_name', developerToEdit.value.developer_name)
+  formData.set('country', developerToEdit.value.country)
+  formData.set('foundation_date', developerToEdit.value.foundation_date)
+  await axios.put(`/api/developers/${developerToEdit.value.id}/`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
   })
   await fetchDevelopers()
+}
+
+function onPictureClick(picture) {
+  selectedPicture.value = picture
 }
 </script>
