@@ -25,6 +25,10 @@ function clearFilters() {
   filters.value = { price_min: '', price_max: '' }
 }
 
+function onExportExcel() {
+  window.location.href = "/api/purchases/export-excel/"
+}
+
 async function fetchPurchases() {
   const r = await axios.get("/api/purchases/")
   purchases.value = r.data
@@ -74,11 +78,9 @@ onBeforeMount(async () => {
   <div class="container-fluid px-4">
     <h1>Покупки</h1>
 
-    <div class="mb-3 p-2 border rounded bg-light">
-      Всего: <strong>{{ stats.count }}</strong> |
-      Средняя цена: <strong>{{ stats.avg?.toFixed(2) }}₽</strong> |
-      Макс: <strong>{{ stats.max }}₽</strong> |
-      Мин: <strong>{{ stats.min }}₽</strong>
+    <div class="mb-3 p-2 border rounded bg-light d-flex justify-content-between align-items-center">
+      <div>Всего: <strong>{{ stats.count }}</strong> | Средняя цена: <strong>{{ stats.avg?.toFixed(2) }}₽</strong> | Макс: <strong>{{ stats.max }}₽</strong> | Мин: <strong>{{ stats.min }}₽</strong></div>
+      <button class="btn btn-success btn-sm" @click="onExportExcel"><i class="bi bi-file-earmark-excel"></i> Экспорт в Excel</button>
     </div>
 
     <div class="p-2 px-0">

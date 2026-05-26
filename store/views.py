@@ -1,6 +1,12 @@
+import datetime
 import pyotp
+from io import BytesIO
+
+import pandas as pd
+
 from django.core.cache import cache
 from django.contrib.auth import authenticate, login, logout
+from django.http import HttpResponse
 
 from rest_framework import viewsets, serializers
 from rest_framework.viewsets import GenericViewSet
@@ -115,6 +121,34 @@ class DeveloperViewSet(viewsets.ModelViewSet):
         stats = Developer.objects.aggregate(count=Count("*"))
         return Response(self.StatsSerializer(instance=stats).data)
 
+    @action(detail=False, methods=["GET"], url_path="export-excel")
+    def export_excel(self, request):
+        try:
+            qs = Developer.objects.all()
+            data = []
+            for item in qs:
+                data.append({
+                    "ID": item.id,
+                    "Название": item.developer_name,
+                    "Страна": item.country,
+                    "Дата основания": str(item.foundation_date),
+                })
+            df = pd.DataFrame(data)
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                df.to_excel(writer, index=False, sheet_name="Разработчики")
+            output.seek(0)
+            today = datetime.datetime.now().strftime("%Y-%m-%d")
+            filename = f"developers_{today}.xlsx"
+            response = HttpResponse(
+                output.read(),
+                content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return response
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
 
 class GameViewSet(viewsets.ModelViewSet):
     queryset = Game.objects.all()
@@ -141,6 +175,36 @@ class GameViewSet(viewsets.ModelViewSet):
         )
         return Response(self.StatsSerializer(instance=stats).data)
 
+    @action(detail=False, methods=["GET"], url_path="export-excel")
+    def export_excel(self, request):
+        try:
+            qs = Game.objects.all()
+            data = []
+            for item in qs:
+                data.append({
+                    "ID": item.id,
+                    "Название": item.game_name,
+                    "Цена": str(item.price),
+                    "Оценка": item.score,
+                    "Статус": item.status,
+                    "Разработчик": item.developer.developer_name if item.developer else "",
+                })
+            df = pd.DataFrame(data)
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                df.to_excel(writer, index=False, sheet_name="Игры")
+            output.seek(0)
+            today = datetime.datetime.now().strftime("%Y-%m-%d")
+            filename = f"games_{today}.xlsx"
+            response = HttpResponse(
+                output.read(),
+                content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return response
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
 
 class UserProfilesViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()
@@ -166,6 +230,33 @@ class UserProfilesViewSet(viewsets.ModelViewSet):
             min=Min("balance"),
         )
         return Response(self.StatsSerializer(instance=stats).data)
+
+    @action(detail=False, methods=["GET"], url_path="export-excel")
+    def export_excel(self, request):
+        try:
+            qs = UserProfile.objects.all()
+            data = []
+            for item in qs:
+                data.append({
+                    "ID": item.id,
+                    "Пользователь": item.user.username,
+                    "Баланс": str(item.balance),
+                })
+            df = pd.DataFrame(data)
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                df.to_excel(writer, index=False, sheet_name="Профили")
+            output.seek(0)
+            today = datetime.datetime.now().strftime("%Y-%m-%d")
+            filename = f"profiles_{today}.xlsx"
+            response = HttpResponse(
+                output.read(),
+                content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return response
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
 
 
 class PurchaseViewSet(viewsets.ModelViewSet):
@@ -205,6 +296,35 @@ class PurchaseViewSet(viewsets.ModelViewSet):
         )
         return Response(self.StatsSerializer(instance=stats).data)
 
+    @action(detail=False, methods=["GET"], url_path="export-excel")
+    def export_excel(self, request):
+        try:
+            qs = self.get_queryset()
+            data = []
+            for item in qs:
+                data.append({
+                    "ID": item.id,
+                    "Пользователь": item.user.username,
+                    "Игра": item.game.game_name,
+                    "Цена покупки": str(item.price_at_purchase),
+                    "Дата покупки": str(item.purchase_date),
+                })
+            df = pd.DataFrame(data)
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                df.to_excel(writer, index=False, sheet_name="Покупки")
+            output.seek(0)
+            today = datetime.datetime.now().strftime("%Y-%m-%d")
+            filename = f"purchases_{today}.xlsx"
+            response = HttpResponse(
+                output.read(),
+                content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return response
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
 
 class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
@@ -242,3 +362,32 @@ class ReviewViewSet(viewsets.ModelViewSet):
             min=Min("rating"),
         )
         return Response(self.StatsSerializer(instance=stats).data)
+
+    @action(detail=False, methods=["GET"], url_path="export-excel")
+    def export_excel(self, request):
+        try:
+            qs = self.get_queryset()
+            data = []
+            for item in qs:
+                data.append({
+                    "ID": item.id,
+                    "Пользователь": item.user.username,
+                    "Игра": item.game.game_name,
+                    "Текст отзыва": item.review_text,
+                    "Оценка": item.rating,
+                })
+            df = pd.DataFrame(data)
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                df.to_excel(writer, index=False, sheet_name="Отзывы")
+            output.seek(0)
+            today = datetime.datetime.now().strftime("%Y-%m-%d")
+            filename = f"reviews_{today}.xlsx"
+            response = HttpResponse(
+                output.read(),
+                content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return response
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)

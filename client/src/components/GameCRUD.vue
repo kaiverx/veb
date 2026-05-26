@@ -117,6 +117,10 @@ function openImageModal(url) {
   currentImageUrl.value = url
 }
 
+function onExportExcel() {
+  window.location.href = "/api/games/export-excel/"
+}
+
 onBeforeMount(async () => {
   await fetchGames()
   await fetchDevelopers()
@@ -129,7 +133,7 @@ onBeforeMount(async () => {
     <h1>Игры</h1>
 
     <div class="mb-3 p-2 border rounded bg-light">
-      Всего: <strong>{{ stats.count }}</strong> |
+      <div>Всего: <strong>{{ stats.count }}</strong> | Средняя цена: <strong>{{ stats.avg?.toFixed(2) }}₽</strong> | Макс: <strong>{{ stats.max }}₽</strong> | Мин: <strong>{{ stats.min }}₽</strong></div>
       Средняя цена: <strong>{{ stats.avg?.toFixed(2) }}₽</strong> |
       Макс: <strong>{{ stats.max }}₽</strong> |
       Мин: <strong>{{ stats.min }}₽</strong>

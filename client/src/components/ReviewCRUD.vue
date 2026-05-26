@@ -27,6 +27,10 @@ function clearFilters() {
   filters.value = { review_text: '', rating_min: '', rating_max: '' }
 }
 
+function onExportExcel() {
+  window.location.href = "/api/reviews/export-excel/"
+}
+
 async function fetchReviews() {
   const r = await axios.get("/api/reviews/")
   reviews.value = r.data
@@ -76,11 +80,9 @@ onBeforeMount(async () => {
   <div class="container-fluid px-4">
     <h1>Отзывы</h1>
 
-    <div class="mb-3 p-2 border rounded bg-light">
-      Всего: <strong>{{ stats.count }}</strong> |
-      Средняя оценка: <strong>{{ stats.avg?.toFixed(1) }}</strong> |
-      Макс: <strong>{{ stats.max }}</strong> |
-      Мин: <strong>{{ stats.min }}</strong>
+    <div class="mb-3 p-2 border rounded bg-light d-flex justify-content-between align-items-center">
+      <div>Всего: <strong>{{ stats.count }}</strong> | Средняя оценка: <strong>{{ stats.avg?.toFixed(1) }}</strong> | Макс: <strong>{{ stats.max }}</strong> | Мин: <strong>{{ stats.min }}</strong></div>
+      <button class="btn btn-success btn-sm" @click="onExportExcel"><i class="bi bi-file-earmark-excel"></i> Экспорт в Excel</button>
     </div>
 
     <div class="p-2 px-0">

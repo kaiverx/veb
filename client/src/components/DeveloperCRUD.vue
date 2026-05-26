@@ -12,10 +12,7 @@ const developerEditImageUrl = ref()
 const currentImageUrl = ref('')
 const stats = ref({})
 
-const filters = ref({
-  developer_name: '',
-  country: '',
-})
+const filters = ref({ developer_name: '', country: '' })
 
 const filteredDevelopers = computed(() => {
   return developers.value.filter(d => {
@@ -25,20 +22,16 @@ const filteredDevelopers = computed(() => {
   })
 })
 
-function clearFilters() {
-  filters.value = { developer_name: '', country: '' }
-}
+function clearFilters() { filters.value = { developer_name: '', country: '' } }
 
 function developerAddPictureChange(event) {
   const file = event.target.files[0]
-  if (file) developerAddImageUrl.value = URL.createObjectURL(file)
-  else developerAddImageUrl.value = null
+  developerAddImageUrl.value = file ? URL.createObjectURL(file) : null
 }
 
 function developerEditPictureChange(event) {
   const file = event.target.files[0]
-  if (file) developerEditImageUrl.value = URL.createObjectURL(file)
-  else developerEditImageUrl.value = null
+  developerEditImageUrl.value = file ? URL.createObjectURL(file) : null
 }
 
 async function fetchDevelopers() {
@@ -53,15 +46,11 @@ async function fetchStats() {
 
 async function onDeveloperAdd() {
   const formData = new FormData()
-  if (developerPictureRef.value && developerPictureRef.value.files[0]) {
-    formData.append('picture', developerPictureRef.value.files[0])
-  }
+  if (developerPictureRef.value?.files[0]) formData.append('picture', developerPictureRef.value.files[0])
   formData.append('developer_name', developerToAdd.value.developer_name)
   formData.append('country', developerToAdd.value.country)
   formData.append('foundation_date', developerToAdd.value.foundation_date)
-  await axios.post("/api/developers/", formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  })
+  await axios.post("/api/developers/", formData, { headers: { 'Content-Type': 'multipart/form-data' } })
   await fetchDevelopers()
   await fetchStats()
   developerToAdd.value = {}
@@ -71,15 +60,11 @@ async function onDeveloperAdd() {
 
 async function onUpdateDeveloper() {
   const formData = new FormData()
-  if (developerEditPictureRef.value && developerEditPictureRef.value.files[0]) {
-    formData.append('picture', developerEditPictureRef.value.files[0])
-  }
+  if (developerEditPictureRef.value?.files[0]) formData.append('picture', developerEditPictureRef.value.files[0])
   formData.append('developer_name', developerToEdit.value.developer_name)
   formData.append('country', developerToEdit.value.country)
   formData.append('foundation_date', developerToEdit.value.foundation_date)
-  await axios.put(`/api/developers/${developerToEdit.value.id}/`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  })
+  await axios.put(`/api/developers/${developerToEdit.value.id}/`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
   await fetchDevelopers()
   await fetchStats()
   developerEditImageUrl.value = null
@@ -97,8 +82,10 @@ async function onRemoveClick(developer) {
   await fetchStats()
 }
 
-function openImageModal(url) {
-  currentImageUrl.value = url
+function openImageModal(url) { currentImageUrl.value = url }
+
+function onExportExcel() {
+  window.location.href = '/api/developers/export-excel/'
 }
 
 onBeforeMount(async () => {
@@ -111,8 +98,11 @@ onBeforeMount(async () => {
   <div class="container-fluid px-4">
     <h1>Разработчики</h1>
 
-    <div class="mb-3 p-2 border rounded bg-light">
-      Всего: <strong>{{ stats.count }}</strong>
+    <div class="mb-3 p-2 border rounded bg-light d-flex justify-content-between align-items-center">
+      <div>Всего: <strong>{{ stats.count }}</strong></div>
+      <button class="btn btn-success btn-sm" @click="onExportExcel">
+        <i class="bi bi-file-earmark-excel"></i> Экспорт в Excel
+      </button>
     </div>
 
     <div class="p-2 px-0">
@@ -250,12 +240,6 @@ onBeforeMount(async () => {
 }
 .item-photo { margin-right: 20px; }
 .item > div:first-child { flex: 1; }
-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-}
+button { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; }
 button i { font-size: 16px; }
 </style>
