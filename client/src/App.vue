@@ -4,6 +4,8 @@ import { onBeforeMount } from 'vue';
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
+axios.defaults.withCredentials = true
+
 onBeforeMount(() => {
   axios.defaults.headers.common['X-CSRFToken'] = Cookies.get("csrftoken");
 })
@@ -44,6 +46,9 @@ onBeforeMount(() => {
             </li>
           </ul>
           <ul class="navbar-nav">
+            <li class="nav-item">
+              <router-link class="nav-link" to="/login">Войти</router-link>
+            </li>
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Пользователь</a>
               <ul class="dropdown-menu">

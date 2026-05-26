@@ -4,6 +4,7 @@ import GameCRUD from '../components/GameCRUD.vue'
 import UserProfileCRUD from '../components/UserProfileCRUD.vue'
 import PurchaseCRUD from '../components/PurchaseCRUD.vue'
 import ReviewCRUD from '../components/ReviewCRUD.vue'
+import LoginForm from '../components/LoginForm.vue'
 
 const routes = [
   { path: '/developers', component: DeveloperCRUD },
@@ -11,6 +12,7 @@ const routes = [
   { path: '/profiles', component: UserProfileCRUD },
   { path: '/purchases', component: PurchaseCRUD },
   { path: '/reviews', component: ReviewCRUD },
+  { path: '/login', component: LoginForm },
 ]
 
 const router = createRouter({
