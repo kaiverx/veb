@@ -3,11 +3,16 @@ import { RouterLink, RouterView } from 'vue-router'
 import { onBeforeMount } from 'vue';
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import { useUserStore } from '@/stores/user_store'
+import { storeToRefs } from 'pinia'
 
 axios.defaults.withCredentials = true
 
+const userStore = useUserStore()
+const { userInfo } = storeToRefs(userStore)
+
 onBeforeMount(() => {
-  axios.defaults.headers.common['X-CSRFToken'] = Cookies.get("csrftoken");
+  axios.defaults.headers.common['X-CSRFToken'] = Cookies.get("csrftoken")
 })
 </script>
 
@@ -47,7 +52,9 @@ onBeforeMount(() => {
           </ul>
           <ul class="navbar-nav">
             <li class="nav-item">
-              <router-link class="nav-link" to="/login">Войти</router-link>
+              <router-link class="nav-link" to="/login">
+                {{ userInfo.is_authenticated ? userInfo.username : 'Войти' }}
+              </router-link>
             </li>
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Пользователь</a>

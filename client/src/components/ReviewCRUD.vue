@@ -1,11 +1,31 @@
 <script setup>
-import { ref, onBeforeMount } from 'vue'
+import { ref, onBeforeMount, computed } from 'vue'
 import axios from 'axios'
 
 const reviews = ref([])
 const games = ref([])
 const reviewToAdd = ref({})
 const reviewToEdit = ref({})
+const stats = ref({})
+
+const filters = ref({
+  review_text: '',
+  rating_min: '',
+  rating_max: '',
+})
+
+const filteredReviews = computed(() => {
+  return reviews.value.filter(r => {
+    if (filters.value.review_text && !r.review_text.toLowerCase().includes(filters.value.review_text.toLowerCase())) return false
+    if (filters.value.rating_min && r.rating < Number(filters.value.rating_min)) return false
+    if (filters.value.rating_max && r.rating > Number(filters.value.rating_max)) return false
+    return true
+  })
+})
+
+function clearFilters() {
+  filters.value = { review_text: '', rating_min: '', rating_max: '' }
+}
 
 async function fetchReviews() {
   const r = await axios.get("/api/reviews/")
@@ -17,15 +37,22 @@ async function fetchGames() {
   games.value = r.data
 }
 
+async function fetchStats() {
+  const r = await axios.get("/api/reviews/stats/")
+  stats.value = r.data
+}
+
 async function onReviewAdd() {
   await axios.post("/api/reviews/", { ...reviewToAdd.value })
   await fetchReviews()
+  await fetchStats()
   reviewToAdd.value = {}
 }
 
 async function onUpdateReview() {
   await axios.put(`/api/reviews/${reviewToEdit.value.id}/`, { ...reviewToEdit.value })
   await fetchReviews()
+  await fetchStats()
 }
 
 async function onReviewEditClick(review) {
@@ -35,17 +62,26 @@ async function onReviewEditClick(review) {
 async function onRemoveClick(review) {
   await axios.delete(`/api/reviews/${review.id}/`)
   await fetchReviews()
+  await fetchStats()
 }
 
 onBeforeMount(async () => {
   await fetchReviews()
   await fetchGames()
+  await fetchStats()
 })
 </script>
 
 <template>
   <div class="container-fluid px-4">
     <h1>Отзывы</h1>
+
+    <div class="mb-3 p-2 border rounded bg-light">
+      Всего: <strong>{{ stats.count }}</strong> |
+      Средняя оценка: <strong>{{ stats.avg?.toFixed(1) }}</strong> |
+      Макс: <strong>{{ stats.max }}</strong> |
+      Мин: <strong>{{ stats.min }}</strong>
+    </div>
 
     <div class="p-2 px-0">
       <form @submit.prevent.stop="onReviewAdd">
@@ -77,10 +113,25 @@ onBeforeMount(async () => {
       </form>
     </div>
 
+    <div class="row mb-2">
+      <div class="col">
+        <input class="form-control form-control-sm" v-model="filters.review_text" placeholder="Фильтр по тексту" />
+      </div>
+      <div class="col">
+        <input class="form-control form-control-sm" type="number" v-model="filters.rating_min" placeholder="Оценка от" min="1" max="10" />
+      </div>
+      <div class="col">
+        <input class="form-control form-control-sm" type="number" v-model="filters.rating_max" placeholder="Оценка до" min="1" max="10" />
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-secondary btn-sm" @click="clearFilters">Сбросить</button>
+      </div>
+    </div>
+
     <div class="px-0">
-      <div v-for="item in reviews" class="item mb-2 p-2 border rounded">
+      <div v-for="item in filteredReviews" class="item mb-2 p-2 border rounded">
         <div>
-          <strong>Игра #{{ item.game }}</strong> - Оценка: {{ item.rating }}/10
+          <strong>Игра #{{ item.game }}</strong> — Оценка: {{ item.rating }}/10
           <br/><small>{{ item.review_text }}</small>
         </div>
         <div class="mt-2">
@@ -135,9 +186,7 @@ onBeforeMount(async () => {
   justify-content: space-between;
   align-items: center;
 }
-.item > div:first-child {
-  flex: 1;
-}
+.item > div:first-child { flex: 1; }
 button {
   display: inline-flex;
   align-items: center;
@@ -145,7 +194,5 @@ button {
   width: 36px;
   height: 36px;
 }
-button i {
-  font-size: 16px;
-}
+button i { font-size: 16px; }
 </style>

@@ -1,11 +1,29 @@
 <script setup>
-import { ref, onBeforeMount } from 'vue'
+import { ref, onBeforeMount, computed } from 'vue'
 import axios from 'axios'
 
 const purchases = ref([])
 const games = ref([])
 const purchaseToAdd = ref({})
 const purchaseToEdit = ref({})
+const stats = ref({})
+
+const filters = ref({
+  price_min: '',
+  price_max: '',
+})
+
+const filteredPurchases = computed(() => {
+  return purchases.value.filter(p => {
+    if (filters.value.price_min && Number(p.price_at_purchase) < Number(filters.value.price_min)) return false
+    if (filters.value.price_max && Number(p.price_at_purchase) > Number(filters.value.price_max)) return false
+    return true
+  })
+})
+
+function clearFilters() {
+  filters.value = { price_min: '', price_max: '' }
+}
 
 async function fetchPurchases() {
   const r = await axios.get("/api/purchases/")
@@ -17,15 +35,22 @@ async function fetchGames() {
   games.value = r.data
 }
 
+async function fetchStats() {
+  const r = await axios.get("/api/purchases/stats/")
+  stats.value = r.data
+}
+
 async function onPurchaseAdd() {
   await axios.post("/api/purchases/", { ...purchaseToAdd.value })
   await fetchPurchases()
+  await fetchStats()
   purchaseToAdd.value = {}
 }
 
 async function onUpdatePurchase() {
   await axios.put(`/api/purchases/${purchaseToEdit.value.id}/`, { ...purchaseToEdit.value })
   await fetchPurchases()
+  await fetchStats()
 }
 
 async function onPurchaseEditClick(purchase) {
@@ -35,17 +60,26 @@ async function onPurchaseEditClick(purchase) {
 async function onRemoveClick(purchase) {
   await axios.delete(`/api/purchases/${purchase.id}/`)
   await fetchPurchases()
+  await fetchStats()
 }
 
 onBeforeMount(async () => {
   await fetchPurchases()
   await fetchGames()
+  await fetchStats()
 })
 </script>
 
 <template>
   <div class="container-fluid px-4">
     <h1>Покупки</h1>
+
+    <div class="mb-3 p-2 border rounded bg-light">
+      Всего: <strong>{{ stats.count }}</strong> |
+      Средняя цена: <strong>{{ stats.avg?.toFixed(2) }}₽</strong> |
+      Макс: <strong>{{ stats.max }}₽</strong> |
+      Мин: <strong>{{ stats.min }}₽</strong>
+    </div>
 
     <div class="p-2 px-0">
       <form @submit.prevent.stop="onPurchaseAdd">
@@ -71,10 +105,22 @@ onBeforeMount(async () => {
       </form>
     </div>
 
+    <div class="row mb-2">
+      <div class="col">
+        <input class="form-control form-control-sm" type="number" v-model="filters.price_min" placeholder="Цена от" />
+      </div>
+      <div class="col">
+        <input class="form-control form-control-sm" type="number" v-model="filters.price_max" placeholder="Цена до" />
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-secondary btn-sm" @click="clearFilters">Сбросить</button>
+      </div>
+    </div>
+
     <div class="px-0">
-      <div v-for="item in purchases" class="item mb-2 p-2 border rounded">
+      <div v-for="item in filteredPurchases" class="item mb-2 p-2 border rounded">
         <div>
-          <strong>Игра #{{ item.game }}</strong> - {{ item.price_at_purchase }}₽
+          <strong>Игра #{{ item.game }}</strong> — {{ item.price_at_purchase }}₽
           <br/><small>{{ item.purchase_date }}</small>
         </div>
         <div class="mt-2">
@@ -125,9 +171,7 @@ onBeforeMount(async () => {
   justify-content: space-between;
   align-items: center;
 }
-.item > div:first-child {
-  flex: 1;
-}
+.item > div:first-child { flex: 1; }
 button {
   display: inline-flex;
   align-items: center;
@@ -135,7 +179,5 @@ button {
   width: 36px;
   height: 36px;
 }
-button i {
-  font-size: 16px;
-}
+button i { font-size: 16px; }
 </style>

@@ -63,7 +63,7 @@ class UserProfileViewSet(GenericViewSet):
         serializer.is_valid(raise_exception=True)
 
         success = False
-        if totp.now() == serializer.validated_data['key']:
+        if totp.verify(serializer.validated_data['key'], valid_window=1):
             cache.set(f'otp_good_{request.user.id}', True, 300)
             success = True
 

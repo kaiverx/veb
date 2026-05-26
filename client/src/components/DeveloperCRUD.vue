@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onBeforeMount } from 'vue'
+import { ref, onBeforeMount, computed } from 'vue'
 import axios from 'axios'
 
 const developers = ref([])
@@ -10,28 +10,45 @@ const developerAddImageUrl = ref()
 const developerEditPictureRef = ref()
 const developerEditImageUrl = ref()
 const currentImageUrl = ref('')
+const stats = ref({})
+
+const filters = ref({
+  developer_name: '',
+  country: '',
+})
+
+const filteredDevelopers = computed(() => {
+  return developers.value.filter(d => {
+    if (filters.value.developer_name && !d.developer_name.toLowerCase().includes(filters.value.developer_name.toLowerCase())) return false
+    if (filters.value.country && !d.country.toLowerCase().includes(filters.value.country.toLowerCase())) return false
+    return true
+  })
+})
+
+function clearFilters() {
+  filters.value = { developer_name: '', country: '' }
+}
 
 function developerAddPictureChange(event) {
   const file = event.target.files[0]
-  if (file) {
-    developerAddImageUrl.value = URL.createObjectURL(file)
-  } else {
-    developerAddImageUrl.value = null
-  }
+  if (file) developerAddImageUrl.value = URL.createObjectURL(file)
+  else developerAddImageUrl.value = null
 }
 
 function developerEditPictureChange(event) {
   const file = event.target.files[0]
-  if (file) {
-    developerEditImageUrl.value = URL.createObjectURL(file)
-  } else {
-    developerEditImageUrl.value = null
-  }
+  if (file) developerEditImageUrl.value = URL.createObjectURL(file)
+  else developerEditImageUrl.value = null
 }
 
 async function fetchDevelopers() {
   const r = await axios.get("/api/developers/")
   developers.value = r.data
+}
+
+async function fetchStats() {
+  const r = await axios.get("/api/developers/stats/")
+  stats.value = r.data
 }
 
 async function onDeveloperAdd() {
@@ -46,6 +63,7 @@ async function onDeveloperAdd() {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
   await fetchDevelopers()
+  await fetchStats()
   developerToAdd.value = {}
   developerAddImageUrl.value = null
   if (developerPictureRef.value) developerPictureRef.value.value = ''
@@ -63,22 +81,20 @@ async function onUpdateDeveloper() {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
   await fetchDevelopers()
+  await fetchStats()
   developerEditImageUrl.value = null
   if (developerEditPictureRef.value) developerEditPictureRef.value.value = ''
 }
 
 async function onDeveloperEditClick(developer) {
   developerToEdit.value = { ...developer }
-  if (developer.picture) {
-    developerEditImageUrl.value = developer.picture
-  } else {
-    developerEditImageUrl.value = null
-  }
+  developerEditImageUrl.value = developer.picture || null
 }
 
 async function onRemoveClick(developer) {
   await axios.delete(`/api/developers/${developer.id}/`)
   await fetchDevelopers()
+  await fetchStats()
 }
 
 function openImageModal(url) {
@@ -87,12 +103,17 @@ function openImageModal(url) {
 
 onBeforeMount(async () => {
   await fetchDevelopers()
+  await fetchStats()
 })
 </script>
 
 <template>
   <div class="container-fluid px-4">
     <h1>Разработчики</h1>
+
+    <div class="mb-3 p-2 border rounded bg-light">
+      Всего: <strong>{{ stats.count }}</strong>
+    </div>
 
     <div class="p-2 px-0">
       <form @submit.prevent.stop="onDeveloperAdd">
@@ -131,20 +152,26 @@ onBeforeMount(async () => {
       </form>
     </div>
 
+    <div class="row mb-2">
+      <div class="col">
+        <input class="form-control form-control-sm" v-model="filters.developer_name" placeholder="Фильтр по названию" />
+      </div>
+      <div class="col">
+        <input class="form-control form-control-sm" v-model="filters.country" placeholder="Фильтр по стране" />
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-secondary btn-sm" @click="clearFilters">Сбросить</button>
+      </div>
+    </div>
+
     <div class="px-0">
-      <div v-for="item in developers" class="item mb-2 p-2 border rounded">
+      <div v-for="item in filteredDevelopers" class="item mb-2 p-2 border rounded">
         <div>
           <strong>{{ item.developer_name }}</strong> - {{ item.country }} ({{ item.foundation_date }})
         </div>
         <div v-if="item.picture" class="item-photo">
-          <img
-            :src="item.picture"
-            style="max-height: 60px; cursor: pointer;"
-            alt="Фото"
-            @click="openImageModal(item.picture)"
-            data-bs-toggle="modal"
-            data-bs-target="#developerImageModal"
-          />
+          <img :src="item.picture" style="max-height: 60px; cursor: pointer;" alt="Фото"
+            @click="openImageModal(item.picture)" data-bs-toggle="modal" data-bs-target="#developerImageModal" />
         </div>
         <div v-else>Нет фото</div>
         <div class="mt-2">
@@ -221,12 +248,8 @@ onBeforeMount(async () => {
   justify-content: space-between;
   align-items: center;
 }
-.item-photo {
-  margin-right: 20px;
-}
-.item > div:first-child {
-  flex: 1;
-}
+.item-photo { margin-right: 20px; }
+.item > div:first-child { flex: 1; }
 button {
   display: inline-flex;
   align-items: center;
@@ -234,7 +257,5 @@ button {
   width: 36px;
   height: 36px;
 }
-button i {
-  font-size: 16px;
-}
+button i { font-size: 16px; }
 </style>

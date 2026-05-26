@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onBeforeMount } from 'vue'
+import { ref, onBeforeMount, computed } from 'vue'
 import axios from 'axios'
 
 const games = ref([])
@@ -11,23 +11,37 @@ const gameAddImageUrl = ref()
 const gameEditPictureRef = ref()
 const gameEditImageUrl = ref()
 const currentImageUrl = ref('')
+const stats = ref({})
+
+const filters = ref({
+  game_name: '',
+  status: '',
+  developer_name: '',
+})
+
+const filteredGames = computed(() => {
+  return games.value.filter(g => {
+    if (filters.value.game_name && !g.game_name.toLowerCase().includes(filters.value.game_name.toLowerCase())) return false
+    if (filters.value.status && g.status !== filters.value.status) return false
+    if (filters.value.developer_name && !(g.developer?.developer_name || '').toLowerCase().includes(filters.value.developer_name.toLowerCase())) return false
+    return true
+  })
+})
+
+function clearFilters() {
+  filters.value = { game_name: '', status: '', developer_name: '' }
+}
 
 function gameAddPictureChange(event) {
   const file = event.target.files[0]
-  if (file) {
-    gameAddImageUrl.value = URL.createObjectURL(file)
-  } else {
-    gameAddImageUrl.value = null
-  }
+  if (file) gameAddImageUrl.value = URL.createObjectURL(file)
+  else gameAddImageUrl.value = null
 }
 
 function gameEditPictureChange(event) {
   const file = event.target.files[0]
-  if (file) {
-    gameEditImageUrl.value = URL.createObjectURL(file)
-  } else {
-    gameEditImageUrl.value = null
-  }
+  if (file) gameEditImageUrl.value = URL.createObjectURL(file)
+  else gameEditImageUrl.value = null
 }
 
 async function fetchGames() {
@@ -38,6 +52,11 @@ async function fetchGames() {
 async function fetchDevelopers() {
   const r = await axios.get("/api/developers/")
   developers.value = r.data
+}
+
+async function fetchStats() {
+  const r = await axios.get("/api/games/stats/")
+  stats.value = r.data
 }
 
 async function onGameAdd() {
@@ -56,6 +75,7 @@ async function onGameAdd() {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
   await fetchGames()
+  await fetchStats()
   gameToAdd.value = {}
   gameAddImageUrl.value = null
   if (gamePictureRef.value) gamePictureRef.value.value = ''
@@ -77,22 +97,20 @@ async function onUpdateGame() {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
   await fetchGames()
+  await fetchStats()
   gameEditImageUrl.value = null
   if (gameEditPictureRef.value) gameEditPictureRef.value.value = ''
 }
 
 async function onGameEditClick(game) {
   gameToEdit.value = { ...game, developer_id: game.developer?.id }
-  if (game.picture) {
-    gameEditImageUrl.value = game.picture
-  } else {
-    gameEditImageUrl.value = null
-  }
+  gameEditImageUrl.value = game.picture || null
 }
 
 async function onRemoveClick(game) {
   await axios.delete(`/api/games/${game.id}/`)
   await fetchGames()
+  await fetchStats()
 }
 
 function openImageModal(url) {
@@ -102,12 +120,20 @@ function openImageModal(url) {
 onBeforeMount(async () => {
   await fetchGames()
   await fetchDevelopers()
+  await fetchStats()
 })
 </script>
 
 <template>
   <div class="container-fluid px-4">
     <h1>Игры</h1>
+
+    <div class="mb-3 p-2 border rounded bg-light">
+      Всего: <strong>{{ stats.count }}</strong> |
+      Средняя цена: <strong>{{ stats.avg?.toFixed(2) }}₽</strong> |
+      Макс: <strong>{{ stats.max }}₽</strong> |
+      Мин: <strong>{{ stats.min }}₽</strong>
+    </div>
 
     <div class="p-2 px-0">
       <form @submit.prevent.stop="onGameAdd">
@@ -177,21 +203,36 @@ onBeforeMount(async () => {
       </form>
     </div>
 
+    <div class="row mb-2">
+      <div class="col">
+        <input class="form-control form-control-sm" v-model="filters.game_name" placeholder="Фильтр по названию" />
+      </div>
+      <div class="col">
+        <select class="form-select form-select-sm" v-model="filters.status">
+          <option value="">Все статусы</option>
+          <option value="beta">Beta</option>
+          <option value="released">Released</option>
+          <option value="early access">Early Access</option>
+          <option value="coming soon">Coming Soon</option>
+        </select>
+      </div>
+      <div class="col">
+        <input class="form-control form-control-sm" v-model="filters.developer_name" placeholder="Фильтр по разработчику" />
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-secondary btn-sm" @click="clearFilters">Сбросить</button>
+      </div>
+    </div>
+
     <div class="px-0">
-      <div v-for="item in games" class="item mb-2 p-2 border rounded">
+      <div v-for="item in filteredGames" class="item mb-2 p-2 border rounded">
         <div>
           <strong>{{ item.game_name }}</strong> - {{ item.developer?.developer_name }} ({{ item.price }}₽, {{ item.status }})
           <br/><small>{{ item.info }} | {{ item.system_requirements }} | Оценка: {{ item.score }}</small>
         </div>
         <div v-if="item.picture" class="item-photo">
-          <img
-            :src="item.picture"
-            style="max-height: 60px; cursor: pointer;"
-            alt="Фото"
-            @click="openImageModal(item.picture)"
-            data-bs-toggle="modal"
-            data-bs-target="#gameImageModal"
-          />
+          <img :src="item.picture" style="max-height: 60px; cursor: pointer;" alt="Фото"
+            @click="openImageModal(item.picture)" data-bs-toggle="modal" data-bs-target="#gameImageModal" />
         </div>
         <div v-else>Нет фото</div>
         <div class="mt-2">
@@ -291,12 +332,8 @@ onBeforeMount(async () => {
   justify-content: space-between;
   align-items: center;
 }
-.item-photo {
-  margin-right: 20px;
-}
-.item > div:first-child {
-  flex: 1;
-}
+.item-photo { margin-right: 20px; }
+.item > div:first-child { flex: 1; }
 button {
   display: inline-flex;
   align-items: center;
@@ -304,7 +341,5 @@ button {
   width: 36px;
   height: 36px;
 }
-button i {
-  font-size: 16px;
-}
+button i { font-size: 16px; }
 </style>
