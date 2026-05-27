@@ -8,5 +8,6 @@ router.register(r'profiles', views.UserProfilesViewSet)
 router.register(r'purchases', views.PurchaseViewSet)
 router.register(r'reviews', views.ReviewViewSet)
 router.register(r'user', views.UserProfileViewSet, basename='user')
+router.register(r'auth', views.RegisterViewSet, basename='auth')
 
 urlpatterns = router.urls

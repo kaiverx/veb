@@ -67,8 +67,8 @@ class Command(BaseCommand):
             UserProfile.objects.get_or_create(
                 user=user,
                 defaults={
+                    'nickname': fake.first_name(),
                     'balance': fake.pydecimal(left_digits=6, right_digits=2, positive=True),
-                    'avatar': '',
                 }
             )
 

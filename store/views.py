@@ -58,7 +58,7 @@ class UserProfileViewSet(GenericViewSet):
 
     @action(detail=False, url_path='otp-login', methods=['POST'])
     def otp_login(self, request, *args, **kwargs):
-        profile = request.user.profile
+        profile, _ = UserProfile.objects.get_or_create(user=request.user)
         if not profile.otp_key:
             profile.otp_key = pyotp.random_base32()
             profile.save()
@@ -82,7 +82,7 @@ class UserProfileViewSet(GenericViewSet):
 
     @action(detail=False, url_path='otp-key', methods=['GET'])
     def get_otp_key(self, request, *args, **kwargs):
-        profile = request.user.profile
+        profile, _ = UserProfile.objects.get_or_create(user=request.user)
         if not profile.otp_key:
             profile.otp_key = pyotp.random_base32()
             profile.save()
@@ -211,9 +211,24 @@ class UserProfilesViewSet(viewsets.ModelViewSet):
     serializer_class = UserProfileSerializer
 
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+        if self.action == 'destroy':
             return [IsAuthenticated(), OTPRequired()]
-        return []
+        return [IsAuthenticated()]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if not self.request.user.is_authenticated:
+            return qs.none()
+        if self.request.user.is_superuser:
+            user_id = self.request.query_params.get('user_id')
+            if user_id:
+                qs = qs.filter(user=user_id)
+        else:
+            qs = qs.filter(user=self.request.user)
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
     class StatsSerializer(serializers.Serializer):
         count = serializers.IntegerField()
@@ -233,6 +248,8 @@ class UserProfilesViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["GET"], url_path="export-excel")
     def export_excel(self, request):
+        if not self.request.user.is_superuser:
+            return Response({'error': 'Нет доступа'}, status=403)
         try:
             qs = UserProfile.objects.all()
             data = []
@@ -264,7 +281,7 @@ class PurchaseViewSet(viewsets.ModelViewSet):
     serializer_class = PurchaseSerializer
 
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+        if self.action in ['update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), OTPRequired()]
         return [IsAuthenticated()]
 
@@ -331,20 +348,19 @@ class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
 
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+        if self.action in ['update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), OTPRequired()]
-        return [IsAuthenticated()]
+        if self.action == 'create':
+            return [IsAuthenticated()]
+        return []
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if not self.request.user.is_authenticated:
-            return qs.none()
-        if self.request.user.is_superuser:
+        # суперюзер может фильтровать по юзеру
+        if self.request.user.is_authenticated and self.request.user.is_superuser:
             user_id = self.request.query_params.get('user_id')
             if user_id:
                 qs = qs.filter(user=user_id)
-        else:
-            qs = qs.filter(user=self.request.user)
         return qs
 
     class StatsSerializer(serializers.Serializer):
@@ -391,3 +407,39 @@ class ReviewViewSet(viewsets.ModelViewSet):
             return response
         except Exception as e:
             return Response({"error": str(e)}, status=500)
+
+
+class RegisterViewSet(GenericViewSet):
+    permission_classes = []
+
+    class RegisterSerializer(serializers.Serializer):
+        username = serializers.CharField()
+        password = serializers.CharField()
+        email = serializers.EmailField(required=False, allow_blank=True)
+
+    @action(detail=False, url_path='register', methods=['POST'], permission_classes=[])
+    def register(self, request, *args, **kwargs):
+        from django.contrib.auth.models import User
+        serializer = self.RegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        username = serializer.validated_data['username']
+        password = serializer.validated_data['password']
+        email = serializer.validated_data.get('email', '')
+
+        if User.objects.filter(username=username).exists():
+            return Response({'success': False, 'error': 'Пользователь с таким именем уже существует'}, status=400)
+
+        user = User.objects.create_user(username=username, password=password, email=email)
+        login(request, user)
+        return Response({'success': True, 'username': user.username})
+
+
+class UsersWithoutProfileViewSet(GenericViewSet):
+    permission_classes = []
+
+    @action(detail=False, methods=["GET"], url_path="without-profile")
+    def get_without_profile(self, request):
+        from django.contrib.auth.models import User
+        users_with_profile = UserProfile.objects.values_list('user_id', flat=True)
+        users = User.objects.exclude(id__in=users_with_profile).values('id', 'username')
+        return Response(list(users))

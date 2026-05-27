@@ -5,7 +5,7 @@ class Developer(models.Model):
     developer_name = models.CharField(max_length=100)
     country = models.CharField(max_length=50)
     foundation_date = models.DateField()
-    picture = models.ImageField("Изображение", null=True, upload_to="developers")
+    picture = models.ImageField("Изображение", null=True, blank=True, upload_to="developers")
 
     def __str__(self):
         return self.developer_name
@@ -25,15 +25,16 @@ class Game(models.Model):
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='coming soon')
     system_requirements = models.TextField()
     developer = models.ForeignKey(Developer, on_delete=models.CASCADE)
-    picture = models.ImageField("Изображение", null=True, upload_to="games")
+    picture = models.ImageField("Изображение", null=True, blank=True, upload_to="games")
 
     def __str__(self):
         return self.game_name
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    nickname = models.CharField(max_length=100, blank=True)
     balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    avatar = models.URLField(blank=True)
+    avatar = models.ImageField("Аватар", null=True, blank=True, upload_to="avatars")
     otp_key = models.CharField(max_length=64, blank=True, null=True)
 
     def __str__(self):

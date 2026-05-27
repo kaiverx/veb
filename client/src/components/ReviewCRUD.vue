@@ -8,11 +8,7 @@ const reviewToAdd = ref({})
 const reviewToEdit = ref({})
 const stats = ref({})
 
-const filters = ref({
-  review_text: '',
-  rating_min: '',
-  rating_max: '',
-})
+const filters = ref({ review_text: '', rating_min: '', rating_max: '' })
 
 const filteredReviews = computed(() => {
   return reviews.value.filter(r => {
@@ -23,13 +19,7 @@ const filteredReviews = computed(() => {
   })
 })
 
-function clearFilters() {
-  filters.value = { review_text: '', rating_min: '', rating_max: '' }
-}
-
-function onExportExcel() {
-  window.location.href = "/api/reviews/export-excel/"
-}
+function clearFilters() { filters.value = { review_text: '', rating_min: '', rating_max: '' } }
 
 async function fetchReviews() {
   const r = await axios.get("/api/reviews/")
@@ -56,7 +46,6 @@ async function onReviewAdd() {
 async function onUpdateReview() {
   await axios.put(`/api/reviews/${reviewToEdit.value.id}/`, { ...reviewToEdit.value })
   await fetchReviews()
-  await fetchStats()
 }
 
 async function onReviewEditClick(review) {
@@ -64,9 +53,22 @@ async function onReviewEditClick(review) {
 }
 
 async function onRemoveClick(review) {
-  await axios.delete(`/api/reviews/${review.id}/`)
-  await fetchReviews()
-  await fetchStats()
+  if (confirm('Удалить отзыв?')) {
+    await axios.delete(`/api/reviews/${review.id}/`)
+    await fetchReviews()
+    await fetchStats()
+  }
+}
+
+async function onExportExcel() {
+  const response = await axios.get("/api/reviews/export-excel/", { responseType: "blob" })
+  const url = window.URL.createObjectURL(new Blob([response.data]))
+  const link = document.createElement("a")
+  link.href = url
+  link.setAttribute("download", "reviews.xlsx")
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
 }
 
 onBeforeMount(async () => {
@@ -77,45 +79,50 @@ onBeforeMount(async () => {
 </script>
 
 <template>
-  <div class="container-fluid px-4">
+  <div class="container">
     <h1>Отзывы</h1>
 
     <div class="mb-3 p-2 border rounded bg-light d-flex justify-content-between align-items-center">
-      <div>Всего: <strong>{{ stats.count }}</strong> | Средняя оценка: <strong>{{ stats.avg?.toFixed(1) }}</strong> | Макс: <strong>{{ stats.max }}</strong> | Мин: <strong>{{ stats.min }}</strong></div>
-      <button class="btn btn-success btn-sm" @click="onExportExcel"><i class="bi bi-file-earmark-excel"></i> Экспорт в Excel</button>
+      <div>
+        Всего: <strong>{{ stats.count }}</strong> |
+        Средняя оценка: <strong>{{ stats.avg?.toFixed(1) }}</strong> |
+        Макс: <strong>{{ stats.max }}</strong> |
+        Мин: <strong>{{ stats.min }}</strong>
+      </div>
+      <button class="btn btn-success btn-sm" @click="onExportExcel">
+        <i class="bi bi-file-earmark-excel"></i> Экспорт в Excel
+      </button>
     </div>
 
-    <div class="p-2 px-0">
-      <form @submit.prevent.stop="onReviewAdd">
-        <div class="row">
-          <div class="col">
-            <div class="form-floating">
-              <select class="form-select" v-model="reviewToAdd.game" required>
-                <option :value="g.id" v-for="g in games">{{ g.game_name }}</option>
-              </select>
-              <label>Игра</label>
-            </div>
-          </div>
-          <div class="col">
-            <div class="form-floating">
-              <input type="text" class="form-control" v-model="reviewToAdd.review_text" required />
-              <label>Текст отзыва</label>
-            </div>
-          </div>
-          <div class="col">
-            <div class="form-floating">
-              <input type="number" class="form-control" v-model="reviewToAdd.rating" min="1" max="10" required />
-              <label>Оценка (1-10)</label>
-            </div>
-          </div>
-          <div class="col-auto">
-            <button class="btn btn-primary"><i class="bi bi-plus-lg"></i></button>
+    <form @submit.prevent.stop="onReviewAdd">
+      <div class="row">
+        <div class="col">
+          <div class="form-floating">
+            <select class="form-select" v-model="reviewToAdd.game" required>
+              <option :value="g.id" v-for="g in games">{{ g.game_name }}</option>
+            </select>
+            <label>Игра</label>
           </div>
         </div>
-      </form>
-    </div>
+        <div class="col">
+          <div class="form-floating">
+            <input type="text" class="form-control" v-model="reviewToAdd.review_text" required />
+            <label>Текст отзыва</label>
+          </div>
+        </div>
+        <div class="col">
+          <div class="form-floating">
+            <input type="number" class="form-control" v-model="reviewToAdd.rating" min="1" max="10" required />
+            <label>Оценка (1-10)</label>
+          </div>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-primary">Добавить</button>
+        </div>
+      </div>
+    </form>
 
-    <div class="row mb-2">
+    <div class="row mb-2 mt-2">
       <div class="col">
         <input class="form-control form-control-sm" v-model="filters.review_text" placeholder="Фильтр по тексту" />
       </div>
@@ -130,18 +137,18 @@ onBeforeMount(async () => {
       </div>
     </div>
 
-    <div class="px-0">
-      <div v-for="item in filteredReviews" class="item mb-2 p-2 border rounded">
-        <div>
-          <strong>Игра #{{ item.game }}</strong> — Оценка: {{ item.rating }}/10
-          <br/><small>{{ item.review_text }}</small>
-        </div>
-        <div class="mt-2">
-          <button class="btn btn-success me-2" @click="onReviewEditClick(item)" data-bs-toggle="modal" data-bs-target="#editReviewModal">
-            <i class="bi bi-pencil-fill"></i>
-          </button>
-          <button class="btn btn-danger" @click="onRemoveClick(item)"><i class="bi bi-x"></i></button>
-        </div>
+    <div v-for="item in filteredReviews" class="item mb-2 p-2 border rounded">
+      <div>
+        <strong>Игра #{{ item.game }}</strong> — Оценка: {{ item.rating }}/10
+        <br/><small>{{ item.review_text }}</small>
+      </div>
+      <div>
+        <button class="btn btn-success me-1" @click="onReviewEditClick(item)" data-bs-toggle="modal" data-bs-target="#editReviewModal">
+          <i class="bi bi-pencil-fill"></i>
+        </button>
+        <button class="btn btn-danger" @click="onRemoveClick(item)">
+          <i class="bi bi-x"></i>
+        </button>
       </div>
     </div>
 
@@ -149,7 +156,7 @@ onBeforeMount(async () => {
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h1 class="modal-title fs-5">Редактировать отзыв</h1>
+            <h1 class="modal-title fs-5">редактировать</h1>
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
@@ -169,8 +176,8 @@ onBeforeMount(async () => {
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
-            <button type="button" class="btn btn-primary" data-bs-dismiss="modal" @click="onUpdateReview"><i class="bi bi-check-lg"></i></button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal" @click="onUpdateReview">Сохранить</button>
           </div>
         </div>
       </div>
@@ -180,21 +187,8 @@ onBeforeMount(async () => {
 
 <style scoped>
 .item {
-  padding: 0.5rem 1rem;
-  margin: 0.5rem 0;
-  border: 1px solid silver;
-  border-radius: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-.item > div:first-child { flex: 1; }
-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-}
-button i { font-size: 16px; }
 </style>
